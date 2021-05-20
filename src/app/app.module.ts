@@ -14,6 +14,7 @@ import { AuthEffects, DataEffects } from './store/effects';
 import { StoreDevtoolsModule } from '@ngrx/store-devtools';
 import { environment } from '../environments/environment';
 import { AuthInterceptor, UnauthInterceptor } from './core';
+import { ServiceWorkerModule } from '@angular/service-worker';
 
 @NgModule({
   declarations: [AppComponent],
@@ -34,6 +35,9 @@ import { AuthInterceptor, UnauthInterceptor } from './core';
     StoreDevtoolsModule.instrument({
       maxAge: 25,
       logOnly: environment.production,
+    }),
+    ServiceWorkerModule.register('ngsw-worker.js', {
+      enabled: environment.production,
     }),
   ],
   providers: [
