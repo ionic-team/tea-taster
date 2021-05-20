@@ -7,6 +7,7 @@ import { NavController } from '@ionic/angular';
 import { selectAuthToken, State } from '@app/store';
 import { SessionVaultService } from '../session-vault/session-vault.service';
 import { map, mergeMap, take, tap } from 'rxjs/operators';
+import { Session } from '@app/models';
 
 @Injectable({
   providedIn: 'root',
@@ -22,7 +23,7 @@ export class AuthGuardService implements CanActivate {
     return this.store.pipe(
       select(selectAuthToken),
       take(1),
-      mergeMap(token => (token ? of(token) : this.vault.restoreSession())),
+      mergeMap(token => (token ? of(token) : this.tryRestoreSession())),
       map(value => !!value),
       tap(sessionExists => {
         if (!sessionExists) {
@@ -30,5 +31,13 @@ export class AuthGuardService implements CanActivate {
         }
       }),
     );
+  }
+
+  private async tryRestoreSession(): Promise<Session | undefined> {
+    try {
+      return await this.vault.restoreSession();
+    } catch (err) {
+      return undefined;
+    }
   }
 }

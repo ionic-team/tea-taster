@@ -14,6 +14,7 @@ import { AuthEffects, DataEffects } from './store/effects';
 import { StoreDevtoolsModule } from '@ngrx/store-devtools';
 import { environment } from '../environments/environment';
 import { AuthInterceptor, UnauthInterceptor } from './core';
+import { PinDialogComponentModule } from './pin-dialog/pin-dialog.module';
 
 @NgModule({
   declarations: [AppComponent],
@@ -23,6 +24,7 @@ import { AuthInterceptor, UnauthInterceptor } from './core';
     BrowserModule,
     IonicModule.forRoot(),
     HttpClientModule,
+    PinDialogComponentModule,
     StoreModule.forRoot(reducers, {
       metaReducers,
       runtimeChecks: {

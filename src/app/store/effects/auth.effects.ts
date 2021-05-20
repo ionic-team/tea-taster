@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { NavController } from '@ionic/angular';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { of } from 'rxjs';
+import { from, of } from 'rxjs';
 import { catchError, exhaustMap, map, tap } from 'rxjs/operators';
 
 import {
@@ -11,7 +11,11 @@ import {
   logout,
   logoutFailure,
   logoutSuccess,
+  sessionLocked,
   unauthError,
+  unlockSession,
+  unlockSessionFailure,
+  unlockSessionSuccess,
 } from '@app/store/actions';
 import { AuthenticationService, SessionVaultService } from '@app/core';
 
@@ -24,7 +28,7 @@ export class AuthEffects {
         this.auth.login(action.email, action.password).pipe(
           tap(session => {
             if (session) {
-              this.sessionVault.login(session);
+              this.sessionVault.login(session, action.mode);
             }
           }),
           map(session =>
@@ -40,13 +44,18 @@ export class AuthEffects {
     ),
   );
 
-  loginSuccess$ = createEffect(
-    () =>
-      this.actions$.pipe(
-        ofType(loginSuccess),
-        tap(() => this.navController.navigateRoot(['/'])),
+  unlockSession$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(unlockSession),
+      exhaustMap(() =>
+        from(this.sessionVault.restoreSession()).pipe(
+          map(session =>
+            session ? unlockSessionSuccess() : unlockSessionFailure(),
+          ),
+          catchError(() => of(unlockSessionFailure())),
+        ),
       ),
-    { dispatch: false },
+    ),
   );
 
   logout$ = createEffect(() =>
@@ -64,11 +73,20 @@ export class AuthEffects {
     ),
   );
 
-  logoutSuccess$ = createEffect(
+  navigateToLogin$ = createEffect(
     () =>
       this.actions$.pipe(
-        ofType(logoutSuccess),
+        ofType(logoutSuccess, sessionLocked),
         tap(() => this.navController.navigateRoot(['/', 'login'])),
+      ),
+    { dispatch: false },
+  );
+
+  navigateToRoot$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(loginSuccess, unlockSessionSuccess),
+        tap(() => this.navController.navigateRoot(['/'])),
       ),
     { dispatch: false },
   );

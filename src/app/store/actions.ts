@@ -1,5 +1,6 @@
 import { Session, TastingNote, Tea } from '@app/models';
 import { createAction, props } from '@ngrx/store';
+import { AuthMode } from '@ionic-enterprise/identity-vault';
 
 export const initialLoadSuccess = createAction(
   '[Data API] initial data load success',
@@ -11,8 +12,8 @@ export const initialLoadFailure = createAction(
 );
 
 export const login = createAction(
-  '[Login Page] login',
-  props<{ email: string; password: string }>(),
+  '[LoginPage] login',
+  props<{ email: string; password: string; mode?: AuthMode }>(),
 );
 export const loginSuccess = createAction(
   '[Auth API] login success',
@@ -30,8 +31,17 @@ export const logoutFailure = createAction(
   props<{ errorMessage: string }>(),
 );
 
+export const unlockSession = createAction('[Login Page] unlock session');
+export const unlockSessionSuccess = createAction(
+  '[Vault API] unlock session success',
+);
+export const unlockSessionFailure = createAction(
+  '[Vault API] unlock session failure',
+);
+
 export const unauthError = createAction('[Auth API] unauthenticated error');
 
+export const sessionLocked = createAction('[Vault API] session locked');
 export const sessionRestored = createAction(
   '[Vault API] session restored',
   props<{ session: Session }>(),
