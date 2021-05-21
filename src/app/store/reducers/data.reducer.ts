@@ -23,7 +23,7 @@ export const reducer = createReducer(
     loading: true,
     errorMessage: '',
   })),
-  on(Actions.sessionRestored, state => ({
+  on(Actions.unlockSessionSuccess, state => ({
     ...state,
     loading: true,
     errorMessage: '',

@@ -1,4 +1,3 @@
-import { Session, TastingNote, Tea } from '@app/models';
 import {
   initialLoadFailure,
   initialLoadSuccess,
@@ -13,11 +12,12 @@ import {
   notesPageLoaded,
   notesPageLoadedFailure,
   notesPageLoadedSuccess,
-  sessionRestored,
   teaDetailsChangeRatingFailure,
   teaDetailsChangeRatingSuccess,
+  unlockSessionSuccess,
 } from '@app/store/actions';
 import { DataState, initialState, reducer } from './data.reducer';
+import { TastingNote, Tea, User } from '@app/models';
 
 const notes: Array<TastingNote> = [
   {
@@ -47,14 +47,11 @@ const notes: Array<TastingNote> = [
   },
 ];
 
-const session: Session = {
-  user: {
-    id: 314,
-    firstName: 'Kevin',
-    lastName: 'Minion',
-    email: 'goodtobebad@gru.org',
-  },
-  token: '39948503',
+const user: User = {
+  id: 314,
+  firstName: 'Kevin',
+  lastName: 'Minion',
+  email: 'goodtobebad@gru.org',
 };
 
 const teas: Array<Tea> = [
@@ -90,16 +87,14 @@ it('returns the default state', () => {
 
 [
   {
-    description:
-      'Login Success: sets the loading flag and clears any error message',
-    action: loginSuccess({ session }),
+    description: 'Login Success: sets the loading flag and clears any error message',
+    action: loginSuccess({ user }),
     begin: { errorMessage: 'Unknown error with data load' },
     end: { loading: true },
   },
   {
-    description:
-      'Session Restored: sets the loading flag and clears any error message',
-    action: sessionRestored({ session }),
+    description: 'Unlock Session Success: sets the loading flag and clears any error message',
+    action: unlockSessionSuccess({ user }),
     begin: { errorMessage: 'Unknown error with data load' },
     end: { loading: true },
   },

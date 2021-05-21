@@ -1,35 +1,79 @@
 import { Injectable } from '@angular/core';
-import { Storage } from '@capacitor/storage';
-import { Store } from '@ngrx/store';
-
 import { Session } from '@app/models';
-import { sessionRestored } from '@app/store/actions';
+import { PinDialogComponent } from '@app/pin-dialog/pin-dialog.component';
 import { State } from '@app/store';
+import { sessionLocked } from '@app/store/actions';
+import {
+  AuthMode,
+  IonicIdentityVaultUser,
+  IonicNativeAuthPlugin,
+} from '@ionic-enterprise/identity-vault';
+import { ModalController, Platform } from '@ionic/angular';
+import { Store } from '@ngrx/store';
+import { BrowserVaultPlugin } from '../browser-vault/browser-vault.plugin';
 
 @Injectable({
   providedIn: 'root',
 })
-export class SessionVaultService {
-  private key = 'auth-session';
-
-  constructor(private store: Store<State>) {}
-
-  async login(session: Session): Promise<void> {
-    await Storage.set({ key: this.key, value: JSON.stringify(session) });
+export class SessionVaultService extends IonicIdentityVaultUser<Session> {
+  constructor(
+    private browserVaultPlugin: BrowserVaultPlugin,
+    private modalController: ModalController,
+    platform: Platform,
+    private store: Store<State>,
+  ) {
+    super(platform, {
+      unlockOnAccess: true,
+      hideScreenOnBackground: true,
+      lockAfter: 5000,
+      allowSystemPinFallback: true,
+      shouldClearVaultAfterTooManyFailedAttempts: false,
+    });
   }
 
-  async restoreSession(): Promise<Session> {
-    const { value } = await Storage.get({ key: this.key });
-    const session = JSON.parse(value);
-
-    if (session) {
-      this.store.dispatch(sessionRestored({ session }));
+  async canUnlock(): Promise<boolean> {
+    if (!(await this.hasStoredSession())) {
+      return false;
+    }
+    const vault = await this.getVault();
+    if (!(await vault.isLocked())) {
+      return false;
     }
 
-    return session;
+    const mode = await this.getAuthMode();
+    return (
+      mode === AuthMode.PasscodeOnly ||
+      mode === AuthMode.BiometricAndPasscode ||
+      (mode === AuthMode.BiometricOnly && (await this.isBiometricsAvailable()))
+    );
   }
 
-  async logout(): Promise<void> {
-    await Storage.remove({ key: this.key });
+  async isLocked(): Promise<boolean> {
+    const vault = await this.getVault();
+    return vault.isLocked();
+  }
+
+  onVaultLocked() {
+    this.store.dispatch(sessionLocked());
+  }
+
+  async onPasscodeRequest(isPasscodeSetRequest: boolean): Promise<string> {
+    const dlg = await this.modalController.create({
+      backdropDismiss: false,
+      component: PinDialogComponent,
+      componentProps: {
+        setPasscodeMode: isPasscodeSetRequest,
+      },
+    });
+    dlg.present();
+    const { data } = await dlg.onDidDismiss();
+    return Promise.resolve(data || '');
+  }
+
+  getPlugin(): IonicNativeAuthPlugin {
+    if ((this.platform as Platform).is('hybrid')) {
+      return super.getPlugin();
+    }
+    return this.browserVaultPlugin;
   }
 }

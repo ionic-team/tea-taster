@@ -1,6 +1,8 @@
-import { Session, TastingNote, Tea } from '@app/models';
+import { TastingNote, Tea, User } from '@app/models';
+import { AuthMode } from '@ionic-enterprise/identity-vault';
 import { createAction, props } from '@ngrx/store';
 
+export const startup = createAction('[Application] startup');
 export const initialLoadSuccess = createAction(
   '[Data API] initial data load success',
   props<{ teas: Array<Tea> }>(),
@@ -11,12 +13,12 @@ export const initialLoadFailure = createAction(
 );
 
 export const login = createAction(
-  '[Login Page] login',
-  props<{ email: string; password: string }>(),
+  '[LoginPage] login',
+  props<{ mode?: AuthMode }>(),
 );
 export const loginSuccess = createAction(
   '[Auth API] login success',
-  props<{ session: Session }>(),
+  props<{ user: User }>(),
 );
 export const loginFailure = createAction(
   '[Auth API] login failure',
@@ -30,12 +32,19 @@ export const logoutFailure = createAction(
   props<{ errorMessage: string }>(),
 );
 
+export const unlockSession = createAction('[Login Page] unlock session');
+export const unlockSessionSuccess = createAction(
+  '[Vault API] unlock session success',
+  props<{ user: User }>(),
+);
+export const unlockSessionFailure = createAction(
+  '[Vault API] unlock session failure',
+);
+
 export const unauthError = createAction('[Auth API] unauthenticated error');
 
-export const sessionRestored = createAction(
-  '[Vault API] session restored',
-  props<{ session: Session }>(),
-);
+export const sessionLocked = createAction('[Vault API] session locked');
+export const sessionUnlocked = createAction('[Vault API] session unlocked');
 
 export const teaDetailsChangeRating = createAction(
   '[Tea Details Page] change rating',

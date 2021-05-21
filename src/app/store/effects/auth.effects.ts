@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { NavController } from '@ionic/angular';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { of } from 'rxjs';
-import { catchError, exhaustMap, map, tap } from 'rxjs/operators';
+import { from, of } from 'rxjs';
+import { catchError, exhaustMap, map, mergeMap, tap } from 'rxjs/operators';
+import { AuthMode } from '@ionic-enterprise/identity-vault';
 
 import {
   login,
@@ -11,7 +12,11 @@ import {
   logout,
   logoutFailure,
   logoutSuccess,
+  sessionLocked,
   unauthError,
+  unlockSession,
+  unlockSessionFailure,
+  unlockSessionSuccess,
 } from '@app/store/actions';
 import { AuthenticationService, SessionVaultService } from '@app/core';
 
@@ -21,17 +26,9 @@ export class AuthEffects {
     this.actions$.pipe(
       ofType(login),
       exhaustMap(action =>
-        this.auth.login(action.email, action.password).pipe(
-          tap(session => {
-            if (session) {
-              this.sessionVault.login(session);
-            }
-          }),
-          map(session =>
-            session
-              ? loginSuccess({ session })
-              : loginFailure({ errorMessage: 'Invalid Username or Password' }),
-          ),
+        from(this.performLogin(action.mode)).pipe(
+          mergeMap(() => this.auth.getUserInfo()),
+          map(user => loginSuccess({ user })),
           catchError(() =>
             of(loginFailure({ errorMessage: 'Unknown error in login' })),
           ),
@@ -40,20 +37,24 @@ export class AuthEffects {
     ),
   );
 
-  loginSuccess$ = createEffect(
-    () =>
-      this.actions$.pipe(
-        ofType(loginSuccess),
-        tap(() => this.navController.navigateRoot(['/'])),
+  unlockSession$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(unlockSession),
+      exhaustMap(() =>
+        from(this.sessionVault.unlock()).pipe(
+          mergeMap(() => this.auth.getUserInfo()),
+          map(user => unlockSessionSuccess({ user })),
+          catchError(() => of(unlockSessionFailure())),
+        ),
       ),
-    { dispatch: false },
+    ),
   );
 
   logout$ = createEffect(() =>
     this.actions$.pipe(
       ofType(logout),
       exhaustMap(() =>
-        this.auth.logout().pipe(
+        from(this.auth.logout()).pipe(
           tap(() => this.sessionVault.logout()),
           map(() => logoutSuccess()),
           catchError(() =>
@@ -64,11 +65,20 @@ export class AuthEffects {
     ),
   );
 
-  logoutSuccess$ = createEffect(
+  navigateToLogin$ = createEffect(
     () =>
       this.actions$.pipe(
-        ofType(logoutSuccess),
+        ofType(logoutSuccess, sessionLocked),
         tap(() => this.navController.navigateRoot(['/', 'login'])),
+      ),
+    { dispatch: false },
+  );
+
+  navigateToRoot$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(loginSuccess, unlockSessionSuccess),
+        tap(() => this.navController.navigateRoot(['/'])),
       ),
     { dispatch: false },
   );
@@ -89,4 +99,12 @@ export class AuthEffects {
     private navController: NavController,
     private sessionVault: SessionVaultService,
   ) {}
+
+  private async performLogin(mode: AuthMode): Promise<void> {
+    await this.sessionVault.logout();
+    if (mode || mode === 0) {
+      await this.sessionVault.setAuthMode(mode);
+    }
+    await this.auth.login();
+  }
 }
