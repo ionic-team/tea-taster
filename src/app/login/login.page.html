@@ -5,14 +5,14 @@
       *ngIf="displayLockingOptions"
       data-testid="locking-options"
     >
-      <ion-radio-group [(ngModel)]="authMode">
+      <ion-radio-group [(ngModel)]="vaultType">
         <ion-list-header>
           <ion-label> Session Locking </ion-label>
         </ion-list-header>
 
-        <ion-item *ngFor="let authMode of authModes">
-          <ion-label>{{ authMode.label }}</ion-label>
-          <ion-radio [value]="authMode.mode"></ion-radio>
+        <ion-item *ngFor="let vaultType of vaultTypes">
+          <ion-label>{{ vaultType.label }}</ion-label>
+          <ion-radio [value]="vaultType.type"></ion-radio>
         </ion-item>
       </ion-radio-group>
     </ion-list>

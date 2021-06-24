@@ -6,7 +6,7 @@ import { selectAuthErrorMessage, State } from '@app/store';
 import { login, unlockSession } from '@app/store/actions';
 import { SessionVaultService } from '@app/core';
 import { Platform } from '@ionic/angular';
-import { AuthMode } from '@ionic-enterprise/identity-vault';
+import { VaultType } from '@ionic-enterprise/identity-vault';
 
 @Component({
   selector: 'app-login',
@@ -19,18 +19,19 @@ export class LoginPage implements OnInit {
   canUnlock = false;
 
   displayLockingOptions: boolean;
-  authMode: AuthMode;
-  authModes: Array<{ mode: AuthMode; label: string }> = [
+
+  vaultType: VaultType;
+  vaultTypes: Array<{ type: VaultType; label: string }> = [
     {
-      mode: AuthMode.PasscodeOnly,
+      type: 'CustomPasscode',
       label: 'Session PIN Unlock',
     },
     {
-      mode: AuthMode.SecureStorage,
+      type: 'SecureStorage',
       label: 'Never Lock Session',
     },
     {
-      mode: AuthMode.InMemoryOnly,
+      type: 'InMemory',
       label: 'Force Login',
     },
   ];
@@ -50,15 +51,15 @@ export class LoginPage implements OnInit {
       this.canUnlock = await this.sessionVault.canUnlock();
       this.displayLockingOptions = true;
       if (await this.sessionVault.isBiometricsAvailable()) {
-        this.authModes = [
+        this.vaultTypes = [
           {
-            mode: AuthMode.BiometricOnly,
+            type: 'DeviceSecurity',
             label: 'Biometric Unlock',
           },
-          ...this.authModes,
+          ...this.vaultTypes,
         ];
       }
-      this.authMode = this.authModes[0].mode;
+      this.vaultType = this.vaultTypes[0].type;
     } else {
       this.displayLockingOptions = false;
       this.canUnlock = false;
@@ -66,7 +67,7 @@ export class LoginPage implements OnInit {
   }
 
   signIn() {
-    this.store.dispatch(login({ mode: this.authMode }));
+    this.store.dispatch(login({ vaultType: this.vaultType }));
   }
 
   redo() {

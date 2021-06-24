@@ -3,7 +3,7 @@ import { NavController } from '@ionic/angular';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { from, of } from 'rxjs';
 import { catchError, exhaustMap, map, mergeMap, tap } from 'rxjs/operators';
-import { AuthMode } from '@ionic-enterprise/identity-vault';
+import { AuthMode, VaultType } from '@ionic-enterprise/identity-vault';
 
 import {
   login,
@@ -26,7 +26,7 @@ export class AuthEffects {
     this.actions$.pipe(
       ofType(login),
       exhaustMap(action =>
-        from(this.performLogin(action.mode)).pipe(
+        from(this.performLogin(action.vaultType)).pipe(
           mergeMap(() => this.auth.getUserInfo()),
           map(user => loginSuccess({ user })),
           catchError(() =>
@@ -100,11 +100,9 @@ export class AuthEffects {
     private sessionVault: SessionVaultService,
   ) {}
 
-  private async performLogin(mode: AuthMode): Promise<void> {
+  private async performLogin(type: VaultType): Promise<void> {
     await this.sessionVault.logout();
-    if (mode || mode === 0) {
-      await this.sessionVault.setAuthMode(mode);
-    }
+    await this.sessionVault.setVaultType(type);
     await this.auth.login();
   }
 }

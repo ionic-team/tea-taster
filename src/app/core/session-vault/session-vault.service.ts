@@ -1,79 +1,108 @@
 import { Injectable } from '@angular/core';
-import { Session } from '@app/models';
-import { PinDialogComponent } from '@app/pin-dialog/pin-dialog.component';
 import { State } from '@app/store';
+import { Store } from '@ngrx/store';
+import { PinDialogComponent } from '@app/pin-dialog/pin-dialog.component';
+import { ModalController, Platform } from '@ionic/angular';
 import { sessionLocked } from '@app/store/actions';
 import {
-  AuthMode,
-  IonicIdentityVaultUser,
-  IonicNativeAuthPlugin,
+  Device,
+  IdentityVaultConfig,
+  Vault,
+  VaultType,
 } from '@ionic-enterprise/identity-vault';
-import { ModalController, Platform } from '@ionic/angular';
-import { Store } from '@ngrx/store';
-import { BrowserVaultPlugin } from '../browser-vault/browser-vault.plugin';
 
 @Injectable({
   providedIn: 'root',
 })
-export class SessionVaultService extends IonicIdentityVaultUser<Session> {
+export class SessionVaultService {
+  private vault: Vault;
+  private config: IdentityVaultConfig;
+
   constructor(
-    private browserVaultPlugin: BrowserVaultPlugin,
+    private store: Store<State>,
     private modalController: ModalController,
     platform: Platform,
-    private store: Store<State>,
   ) {
-    super(platform, {
-      unlockOnAccess: true,
-      hideScreenOnBackground: true,
-      lockAfter: 5000,
-      allowSystemPinFallback: true,
+    this.config = {
+      key: 'com.kensodemann.teataster',
+      deviceSecurityType: 'Both',
+      type: 'CustomPasscode',
+      lockAfterBackgrounded: 5000,
       shouldClearVaultAfterTooManyFailedAttempts: false,
+    };
+
+    const newVault = new Vault(this.config);
+
+    newVault.onUnlock(() => {
+      console.log('@VAULT UNLOCKED!');
     });
+
+    newVault.onLock(() => {
+      console.log('@VAULT LOCKED!');
+      this.store.dispatch(sessionLocked());
+    });
+
+    newVault.onError(err => {
+      console.log('@VAULT ERROR: ', err.message);
+    });
+
+    newVault.onPasscodeRequested(async isPasscodeSetRequest => {
+      const dlg = await this.modalController.create({
+        backdropDismiss: false,
+        component: PinDialogComponent,
+        componentProps: {
+          setPasscodeMode: isPasscodeSetRequest,
+        },
+      });
+      dlg.present();
+      const { data } = await dlg.onDidDismiss();
+      await this.vault.setCustomPasscode(data);
+      return Promise.resolve();
+    });
+
+    this.vault = newVault;
+
+    console.log('Vault initialized');
   }
 
   async canUnlock(): Promise<boolean> {
-    if (!(await this.hasStoredSession())) {
-      return false;
-    }
-    const vault = await this.getVault();
-    if (!(await vault.isLocked())) {
+    if (!(await this.vault.doesVaultExist())) {
+      console.log('@VAULT CANNOT BE UNLOCKED - does not exist!');
       return false;
     }
 
-    const mode = await this.getAuthMode();
-    return (
-      mode === AuthMode.PasscodeOnly ||
-      mode === AuthMode.BiometricAndPasscode ||
-      (mode === AuthMode.BiometricOnly && (await this.isBiometricsAvailable()))
-    );
+    if (!(await this.vault.isLocked())) {
+      console.log('@VAULT CANNOT BE UNLOCKED - is not locked!');
+      return false;
+    }
+
+    console.log('@VAULT CAN BE UNLOCKED!');
+
+    return true;
   }
 
   async isLocked(): Promise<boolean> {
-    const vault = await this.getVault();
-    return vault.isLocked();
+    return this.vault.isLocked();
   }
 
-  onVaultLocked() {
-    this.store.dispatch(sessionLocked());
+  async logout() {
+    return this.vault.clear();
   }
 
-  async onPasscodeRequest(isPasscodeSetRequest: boolean): Promise<string> {
-    const dlg = await this.modalController.create({
-      backdropDismiss: false,
-      component: PinDialogComponent,
-      componentProps: {
-        setPasscodeMode: isPasscodeSetRequest,
-      },
-    });
-    dlg.present();
-    const { data } = await dlg.onDidDismiss();
-    return Promise.resolve(data || '');
+  async unlock() {
+    return this.vault.unlock();
   }
 
-  getPlugin(): IonicNativeAuthPlugin {
-    if ((this.platform as Platform).is('hybrid')) {
-      return super.getPlugin();
-    }
-    return this.browserVaultPlugin;
+  async isBiometricsAvailable(): Promise<boolean> {
+    return Device.isBiometricsEnabled();
+  }
+
+  async setVaultType(type: VaultType) {
+    const newConfig = { ...this.config, type };
+    return this.vault.updateConfig(newConfig);
+  }
+
+  getVault(): Vault {
+    return this.vault;
   }
 }

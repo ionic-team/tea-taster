@@ -1,5 +1,5 @@
 import { TastingNote, Tea, User } from '@app/models';
-import { AuthMode } from '@ionic-enterprise/identity-vault';
+import { VaultType } from '@ionic-enterprise/identity-vault';
 import { createAction, props } from '@ngrx/store';
 
 export const startup = createAction('[Application] startup');
@@ -14,7 +14,7 @@ export const initialLoadFailure = createAction(
 
 export const login = createAction(
   '[LoginPage] login',
-  props<{ mode?: AuthMode }>(),
+  props<{ vaultType?: VaultType }>(),
 );
 export const loginSuccess = createAction(
   '[Auth API] login success',
